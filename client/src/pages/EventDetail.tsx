@@ -111,8 +111,9 @@ const EventDetail = ({ hash }: { hash?: string }) => {
   };
 
   const isMoodiEvent = currentEvent?.id === '6a997f663954e75ccc4dc599' || (currentEvent?.title && currentEvent.title.toLowerCase().includes('jecrc x iit mumbai'));
-  const isNotStarted = isMoodiEvent ? false : rawEvent?.registrationStatus === 'Not Yet Started';
-  const isClosed = isMoodiEvent ? false : (rawEvent?.registrationStatus === 'Closed' || (!isNotStarted && isRegistrationClosed()));
+  const isHardcodedFormEvent = currentEvent?.id === '6a9bbfa73954e75ccc4dd084';
+  const isNotStarted = (isMoodiEvent || isHardcodedFormEvent) ? false : rawEvent?.registrationStatus === 'Not Yet Started';
+  const isClosed = (isMoodiEvent || isHardcodedFormEvent) ? false : (rawEvent?.registrationStatus === 'Closed' || (!isNotStarted && isRegistrationClosed()));
 
   const cleanDateStr = (d: any) => d ? d.toString().replace(/T$/, '') : '';
   const getValidDate = (d: any) => {
@@ -492,6 +493,11 @@ const EventDetail = ({ hash }: { hash?: string }) => {
                   <button
                     className="reg-btn"
                     onClick={() => {
+                      if (isHardcodedFormEvent) {
+                        window.open('https://forms.gle/6YHQtLEd9Moancs39', '_blank', 'noopener,noreferrer');
+                        return;
+                      }
+
                       if (isMoodiEvent) {
                         window.open('https://my.moodi.org/multicities', '_blank', 'noopener,noreferrer');
                         return;
