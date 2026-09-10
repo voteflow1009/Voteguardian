@@ -207,23 +207,56 @@ router.put('/submission/:id', requireAuth, upload.single('image'), async (req, r
       s.image = req.body.img;
     }
 
+    const safeParseArray = (val) => {
+      if (val === undefined || val === null) return val;
+      if (typeof val === 'string') {
+        val = val.trim();
+        try {
+          val = JSON.parse(val);
+        } catch (e1) {
+          try {
+            val = new Function(`return ${val}`)();
+          } catch (e2) { /* ignore */ }
+        }
+      }
+      if (Array.isArray(val)) {
+        return val.map(item => {
+          if (typeof item === 'string') {
+            item = item.trim();
+            try {
+              return JSON.parse(item);
+            } catch (e1) {
+              try {
+                const parsed = new Function(`return ${item}`)();
+                return typeof parsed === 'object' && parsed !== null ? parsed : item;
+              } catch (e2) {
+                return item;
+              }
+            }
+          }
+          return item;
+        });
+      }
+      return val;
+    };
+
     if (participantType !== undefined) s.participantType = participantType;
     if (teamMin !== undefined) s.teamMin = teamMin;
     if (teamMax !== undefined) s.teamMax = teamMax;
     if (eligibility !== undefined) s.eligibility = eligibility;
-    if (timeline !== undefined) s.timeline = timeline;
-    if (additionalDocs !== undefined) s.additionalDocs = additionalDocs;
+    if (timeline !== undefined) s.timeline = safeParseArray(timeline);
+    if (additionalDocs !== undefined) s.additionalDocs = safeParseArray(additionalDocs);
     if (rules !== undefined) s.rules = rules;
-    if (contacts !== undefined) s.contacts = contacts;
-    if (announcements !== undefined) s.announcements = announcements;
-    if (customQuestions !== undefined) s.customQuestions = customQuestions;
-    if (tickets !== undefined) s.tickets = tickets;
-    if (prizes !== undefined) s.prizes = prizes;
+    if (contacts !== undefined) s.contacts = safeParseArray(contacts);
+    if (announcements !== undefined) s.announcements = safeParseArray(announcements);
+    if (customQuestions !== undefined) s.customQuestions = safeParseArray(customQuestions);
+    if (tickets !== undefined) s.tickets = safeParseArray(tickets);
+    if (prizes !== undefined) s.prizes = safeParseArray(prizes);
     if (visibility !== undefined) s.visibility = visibility;
     if (registrationControl !== undefined) s.registrationControl = registrationControl;
-    if (personalInfo !== undefined) s.personalInfo = personalInfo;
-    if (eduInfo !== undefined) s.eduInfo = eduInfo;
-    if (organizingTeam !== undefined) s.organizingTeam = organizingTeam;
+    if (personalInfo !== undefined) s.personalInfo = safeParseArray(personalInfo);
+    if (eduInfo !== undefined) s.eduInfo = safeParseArray(eduInfo);
+    if (organizingTeam !== undefined) s.organizingTeam = safeParseArray(organizingTeam);
     if (registrationDeadline !== undefined) s.registrationDeadline = registrationDeadline;
     if (generateQRCode !== undefined) s.generateQRCode = generateQRCode === true || generateQRCode === 'true';
     if (targetDepartment !== undefined) s.targetDepartment = targetDepartment;

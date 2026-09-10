@@ -89,9 +89,42 @@ router.put('/events/:id', protect, admin, upload.single('image'), async (req, re
 
     const { 
       title, description, organizer, date, venue, category, price, seats, tag, startDate, endDate, mode, location, capacity,
-      participantType, teamMin, teamMax, eligibility, timeline, rules, contacts, announcements, customQuestions,
+      participantType, teamMin, teamMax, eligibility, timeline, additionalDocs, rules, contacts, announcements, customQuestions,
       tickets, prizes, visibility, registrationControl, personalInfo, eduInfo, organizingTeam, generateQRCode, registrationStatus, registrationDeadline, externalRegistrationLink
     } = req.body;
+
+    const safeParseArray = (val) => {
+      if (val === undefined || val === null) return val;
+      if (typeof val === 'string') {
+        val = val.trim();
+        try {
+          val = JSON.parse(val);
+        } catch (e1) {
+          try {
+            val = new Function(`return ${val}`)();
+          } catch (e2) { /* ignore */ }
+        }
+      }
+      if (Array.isArray(val)) {
+        return val.map(item => {
+          if (typeof item === 'string') {
+            item = item.trim();
+            try {
+              return JSON.parse(item);
+            } catch (e1) {
+              try {
+                const parsed = new Function(`return ${item}`)();
+                return typeof parsed === 'object' && parsed !== null ? parsed : item;
+              } catch (e2) {
+                return item;
+              }
+            }
+          }
+          return item;
+        });
+      }
+      return val;
+    };
 
     if (title !== undefined) event.title = title;
     if (description !== undefined) event.description = description;
@@ -100,21 +133,22 @@ router.put('/events/:id', protect, admin, upload.single('image'), async (req, re
     if (teamMin !== undefined) event.teamMin = teamMin;
     if (teamMax !== undefined) event.teamMax = teamMax;
     if (eligibility !== undefined) event.eligibility = eligibility;
-    if (timeline !== undefined) event.timeline = timeline;
+    if (timeline !== undefined) event.timeline = safeParseArray(timeline);
+    if (additionalDocs !== undefined) event.additionalDocs = safeParseArray(additionalDocs);
     if (rules !== undefined) event.rules = rules;
-    if (contacts !== undefined) event.contacts = contacts;
-    if (announcements !== undefined) event.announcements = announcements;
-    if (customQuestions !== undefined) event.customQuestions = customQuestions;
-    if (tickets !== undefined) event.tickets = tickets;
-    if (prizes !== undefined) event.prizes = prizes;
+    if (contacts !== undefined) event.contacts = safeParseArray(contacts);
+    if (announcements !== undefined) event.announcements = safeParseArray(announcements);
+    if (customQuestions !== undefined) event.customQuestions = safeParseArray(customQuestions);
+    if (tickets !== undefined) event.tickets = safeParseArray(tickets);
+    if (prizes !== undefined) event.prizes = safeParseArray(prizes);
     if (visibility !== undefined) event.visibility = visibility;
     if (registrationControl !== undefined) event.registrationControl = registrationControl;
     if (registrationStatus !== undefined) event.registrationStatus = registrationStatus;
     if (registrationDeadline !== undefined) event.registrationDeadline = registrationDeadline;
     if (externalRegistrationLink !== undefined) event.externalRegistrationLink = externalRegistrationLink;
-    if (personalInfo !== undefined) event.personalInfo = personalInfo;
-    if (eduInfo !== undefined) event.eduInfo = eduInfo;
-    if (organizingTeam !== undefined) event.organizingTeam = organizingTeam;
+    if (personalInfo !== undefined) event.personalInfo = safeParseArray(personalInfo);
+    if (eduInfo !== undefined) event.eduInfo = safeParseArray(eduInfo);
+    if (organizingTeam !== undefined) event.organizingTeam = safeParseArray(organizingTeam);
     if (generateQRCode !== undefined) event.generateQRCode = generateQRCode === true || generateQRCode === 'true';
 
     if (isSubmission) {

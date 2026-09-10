@@ -219,11 +219,12 @@ const EventDetail = ({ hash }: { hash?: string }) => {
               .order-3 { order: 3; margin-bottom: 1.5rem !important; }
               .order-4 { order: 4; margin-bottom: 1.5rem !important; }
               .order-5 { order: 5; margin-bottom: 1.5rem !important; }
-              .order-6 { order: 6; margin-bottom: 1.5rem !important; }
-              .order-7 { order: 7; margin-bottom: 1.5rem !important; }
-              .order-8 { order: 8; margin-top: 0 !important; }
-              .order-9 { order: 9; margin-top: 1rem !important; }
-              .order-10 { order: 10; margin-top: 1rem !important; }
+              .order-5-half { order: 6; margin-bottom: 1.5rem !important; }
+              .order-6 { order: 7; margin-bottom: 1.5rem !important; }
+              .order-7 { order: 8; margin-bottom: 1.5rem !important; }
+              .order-8 { order: 9; margin-top: 0 !important; }
+              .order-9 { order: 10; margin-top: 1rem !important; }
+              .order-10 { order: 11; margin-top: 1rem !important; }
             }
           `}</style>
 
