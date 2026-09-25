@@ -908,34 +908,33 @@ router.get('/:id', softAuth, async (req, res) => {
       actualId = rawParam.match(/-([a-fA-F0-9]{24})$/)[1];
     }
 
-    console.log('GET /:id rawParam:', rawParam, 'actualId:', actualId);
-      let eventModel = 'Event';
+    let eventModel = 'Event';
     let event = null;
 
     if (mongoose.Types.ObjectId.isValid(actualId)) {
-      event = await Event.findById(actualId).populate('createdBy', 'avatar logo').populate('subEvents').lean();
+      const [e1, e2, e3] = await Promise.all([
+        Event.findById(actualId).populate('createdBy', 'avatar logo').populate('subEvents').lean(),
+        EventSubmission.findById(actualId).populate('createdBy', 'avatar logo').populate('subEvents').lean(),
+        ClubsEvent.findById(actualId).populate('createdBy', 'avatar logo').populate('subEvents').lean()
+      ]);
 
-      if (!event) {
-        event = await EventSubmission.findById(actualId).populate('createdBy', 'avatar logo').populate('subEvents').lean();
-        eventModel = 'EventSubmission';
-      }
-
-      if (!event) {
-        event = await ClubsEvent.findById(actualId).populate('createdBy', 'avatar logo').populate('subEvents').lean();
-        eventModel = 'ClubsEvent';
-      }
+      if (e1) { event = e1; eventModel = 'Event'; }
+      else if (e2) { event = e2; eventModel = 'EventSubmission'; }
+      else if (e3) { event = e3; eventModel = 'ClubsEvent'; }
     }
 
     if (!event) {
       const cleanSlug = rawParam.toLowerCase().trim();
-      const findBySlug = async (Model) => {
-        const list = await Model.find({}).populate('createdBy', 'avatar logo').lean();
-        return list.find(e => {
-          const s = (e.title || '').toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/[\s_]+/g, '-');
-          return s === cleanSlug;
-        });
-      };
-      event = await findBySlug(EventSubmission) || await findBySlug(Event) || await findBySlug(ClubsEvent);
+      const escapeRegex = (s) => s.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+      const titlePattern = cleanSlug.split('-').map(escapeRegex).join('[\\s_-]+');
+      const titleRegex = new RegExp(`^${titlePattern}$`, 'i');
+
+      const [s1, s2, s3] = await Promise.all([
+        Event.findOne({ title: titleRegex }).populate('createdBy', 'avatar logo').populate('subEvents').lean(),
+        EventSubmission.findOne({ title: titleRegex }).populate('createdBy', 'avatar logo').populate('subEvents').lean(),
+        ClubsEvent.findOne({ title: titleRegex }).populate('createdBy', 'avatar logo').populate('subEvents').lean()
+      ]);
+      event = s1 || s2 || s3;
     }
 
     if (!event) return res.status(404).json({ message: 'Event not found. actualId: ' + actualId + ' Model: ' + eventModel });
@@ -952,18 +951,19 @@ router.get('/:id', softAuth, async (req, res) => {
       }
     }
 
-    // Fetch Paid details if any
-    const pricing = await PaidEventDetail.findOne({ event: event._id }).lean();
+    // Parallel fetch for Pricing & Registration counts
+    const [pricing, freeCount, paidCount] = await Promise.all([
+      PaidEventDetail.findOne({ event: event._id }).lean(),
+      Registration.countDocuments({ event: event._id }),
+      PaidRegistration.countDocuments({ event: event._id, status: 'completed' })
+    ]);
+
     if (pricing) {
       pricing.isPaid = true;
       event.pricing = pricing;
     }
 
-    // Check registration status and capacity
-    const freeCount = await Registration.countDocuments({ event: event._id });
-    const paidCount = await PaidRegistration.countDocuments({ event: event._id, status: 'completed' });
     const totalCount = Math.max(freeCount + paidCount, event.registeredUsers?.length || 0);
-
     const isFull = event.capacity && Number(event.capacity) > 0 && totalCount >= Number(event.capacity);
 
     event.isRegistered = event.allowMultipleRegistrations ? false : (req.user ? event.registeredUsers?.some(id => id.toString() === req.user._id.toString()) : false);

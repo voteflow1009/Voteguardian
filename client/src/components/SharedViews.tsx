@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, MapPin, ArrowLeft, Heart, Share2, Ticket, Sparkles, Users, CheckCircle, Loader2, X } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import api from '../api/axios';
 import { useAuth } from '../contexts/AuthContext';
 import darkLogo from '../logo/dark logo.png';
@@ -305,12 +305,31 @@ export const RegisterView = ({ event, onBack }: { event: any, onBack: () => void
   const { isLoggedIn, user } = useAuth();
 
   const isTeam = event?.participantType === 'team';
-  const minTeam = event?.teamMin || 1;
-  const maxTeam = event?.teamMax || 4;
+  const fixedTeamSize = isTeam ? (Number(event?.teamMax) || Number(event?.teamMin) || Number(event?.teamCapacity) || 4) : 1;
 
-  const [teamSize, setTeamSize] = useState(isTeam ? minTeam : 1);
+  const [teamSize, setTeamSize] = useState(fixedTeamSize);
   const [ticketQuantity, setTicketQuantity] = useState(1);
-  const [teamMembers, setTeamMembers] = useState([{ name: user?.name || '', email: user?.email || '', phone: (user as any)?.phone || '', customAnswers: [] as any[] }]);
+  const [teamMembers, setTeamMembers] = useState(() => {
+    const initial = [{ name: user?.name || '', email: user?.email || '', phone: (user as any)?.phone || '', customAnswers: [] as any[] }];
+    while (initial.length < fixedTeamSize) {
+      initial.push({ name: '', email: '', phone: '', customAnswers: [] });
+    }
+    return initial;
+  });
+
+  useEffect(() => {
+    if (isTeam && fixedTeamSize > 0) {
+      setTeamSize(fixedTeamSize);
+      setTeamMembers(prev => {
+        const updated = [...prev];
+        while (updated.length < fixedTeamSize) {
+          updated.push({ name: '', email: '', phone: '', customAnswers: [] });
+        }
+        return updated.slice(0, fixedTeamSize);
+      });
+    }
+  }, [isTeam, fixedTeamSize]);
+
   const [selectedTicket, setSelectedTicket] = useState(event.tickets?.[0]?.category || 'General');
 
   const [currentStep, setCurrentStep] = useState(0); // Current team member index
@@ -396,7 +415,7 @@ export const RegisterView = ({ event, onBack }: { event: any, onBack: () => void
   };
 
   const updateTeamSize = (size: number) => {
-    let newSize = Math.max(isTeam ? minTeam : 1, Math.min(size, isTeam ? maxTeam : 1));
+    let newSize = isTeam ? fixedTeamSize : Math.max(1, size);
     setTeamSize(newSize);
 
     setTeamMembers(prev => {
@@ -781,18 +800,15 @@ export const RegisterView = ({ event, onBack }: { event: any, onBack: () => void
 
               <div style={{ display: 'flex', gap: '1rem', flexDirection: 'column' }}>
 
-                {isTeam && currentStep === 0 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '0.5rem', padding: '1rem', background: '#F5F3FF', borderRadius: '12px', border: '1px dashed #8B5CF6' }}>
-                    <label style={{ fontSize: '1.05rem', fontWeight: 700, color: '#4c1d95' }}>Configure Team Size</label>
-                    <select
-                      value={teamSize}
-                      onChange={e => updateTeamSize(Number(e.target.value))}
-                      style={{ width: '100%', padding: '0.85rem 1rem', background: '#ffffff', border: '1px solid #c4b5fd', borderRadius: '8px', color: '#111', outline: 'none', fontSize: '1rem', fontFamily: 'inherit', cursor: 'pointer' }}
-                    >
-                      {Array.from({ length: maxTeam - minTeam + 1 }, (_, i) => minTeam + i).map(size => (
-                        <option key={size} value={size}>{size} Members</option>
-                      ))}
-                    </select>
+                {isTeam && (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem', padding: '0.85rem 1.25rem', background: '#F5F3FF', borderRadius: '12px', border: '1px solid #ddd6fe' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Users size={20} color="#7c3aed" />
+                      <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#5b21b6' }}>Team Registration ({teamSize} Members Required)</span>
+                    </div>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#7c3aed', background: '#ede9fe', padding: '4px 12px', borderRadius: '20px' }}>
+                      Member {currentStep + 1} of {teamSize}
+                    </span>
                   </div>
                 )}
 
@@ -1241,12 +1257,10 @@ export const RegisterView = ({ event, onBack }: { event: any, onBack: () => void
                               <span style={{ fontWeight: 800, color: '#8B5CF6' }}>
                                 {isFree ? 'Free' : `₹${t.price}`}
                               </span>
-                              {!isFree && isSelected && (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#e2e8f0', borderRadius: '6px', padding: '2px 4px' }} onClick={e => e.stopPropagation()}>
-                                  <button type="button" onClick={() => setTicketQuantity(prev => Math.max(0, prev - 1))} style={{ width: '24px', height: '24px', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'transparent', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 700, color: '#111' }}>-</button>
-                                  <span style={{ fontSize: '0.9rem', fontWeight: 600, width: '12px', textAlign: 'center', color: '#111' }}>{ticketQuantity}</span>
-                                  <button type="button" onClick={() => setTicketQuantity(prev => Math.min(teamSize, prev + 1))} style={{ width: '24px', height: '24px', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'transparent', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 700, color: '#111' }}>+</button>
-                                </div>
+                              {isSelected && (
+                                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#8B5CF6', background: 'rgba(139, 92, 246, 0.1)', padding: '4px 10px', borderRadius: '20px' }}>
+                                  Selected ✓
+                                </span>
                               )}
                             </div>
                           </div>
@@ -1267,31 +1281,31 @@ export const RegisterView = ({ event, onBack }: { event: any, onBack: () => void
               </div>
 
               <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-                {(currentStep > 0 || (isMultiPageMode && (activeSection > 0 || sectionHistory.length > 1))) && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (isMultiPageMode && activeSection > 0) {
-                        setSectionHistory(prev => {
-                          const newHist = [...prev];
-                          newHist.pop();
-                          const prevIdx = newHist.length > 0 ? newHist[newHist.length - 1] : 0;
-                          setActiveSection(prevIdx);
-                          return newHist;
-                        });
-                      } else if (currentStep > 0) {
-                        setCurrentStep(prev => prev - 1);
-                        if (isMultiPageMode) {
-                          setActiveSection(0);
-                          setSectionHistory([0]);
-                        }
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isMultiPageMode && activeSection > 0) {
+                      setSectionHistory(prev => {
+                        const newHist = [...prev];
+                        newHist.pop();
+                        const prevIdx = newHist.length > 0 ? newHist[newHist.length - 1] : 0;
+                        setActiveSection(prevIdx);
+                        return newHist;
+                      });
+                    } else if (currentStep > 0) {
+                      setCurrentStep(prev => prev - 1);
+                      if (isMultiPageMode) {
+                        setActiveSection(0);
+                        setSectionHistory([0]);
                       }
-                    }}
-                    style={{ background: '#F3F4F6', color: '#4B5563', padding: '1rem', borderRadius: '12px', fontWeight: 600, border: 'none', cursor: 'pointer', flex: 0.4, fontSize: '1.05rem', fontFamily: 'inherit' }}
-                  >
+                    } else {
+                      onBack();
+                    }
+                  }}
+                  style={{ background: '#F3F4F6', color: '#4B5563', padding: '1rem', borderRadius: '12px', fontWeight: 600, border: 'none', cursor: 'pointer', flex: 0.4, fontSize: '1.05rem', fontFamily: 'inherit' }}
+                >
                     Back
                   </button>
-                )}
 
                 <motion.button
                   type="submit"

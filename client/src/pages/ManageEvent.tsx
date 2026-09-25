@@ -400,12 +400,9 @@ function OverviewTab({ event, saveEvent }: { event: any, saveEvent: any }) {
             </div>
 
             {participantType === 'team' && (
-              <div style={{ borderTop: '1px solid #dcdcdc', paddingTop: '1rem', display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.85rem', fontWeight: 600 }}>
-                <span>Min</span>
-                <input type="number" value={teamMin} onChange={e => setTeamMin(Number(e.target.value))} style={{ width: '60px', background: '#dcdcdc', border: 'none', borderRadius: '4px', padding: '4px', textAlign: 'center' }} />
-                <input type="range" min={1} max={10} value={teamMax} onChange={e => setTeamMax(Number(e.target.value))} style={{ flex: 1 }} />
-                <span>Max</span>
-                <input type="number" value={teamMax} onChange={e => setTeamMax(Number(e.target.value))} style={{ width: '60px', background: '#dcdcdc', border: 'none', borderRadius: '4px', padding: '4px', textAlign: 'center' }} />
+              <div style={{ borderTop: '1px solid #dcdcdc', paddingTop: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: 600 }}>
+                <span>Team Members per Team</span>
+                <input type="number" min={1} max={20} value={teamMax} onChange={e => { const val = Number(e.target.value); setTeamMax(val); setTeamMin(val); }} style={{ width: '80px', background: '#dcdcdc', border: 'none', borderRadius: '4px', padding: '6px', textAlign: 'center', fontWeight: 700 }} />
               </div>
             )}
           </div>
@@ -949,14 +946,8 @@ function RegistrationTab({ event, saveEvent }: { event: any, saveEvent: any }) {
             </select>
             {partType === 'Team' && (
               <div style={{ display: 'flex', gap: '8px', marginTop: '8px', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <span style={{ fontSize: '0.75rem', color: '#666', fontWeight: 600 }}>Min:</span>
-                  <input type="number" min="1" value={teamMin} onChange={e => setTeamMin(e.target.value)} style={{ width: '50px', padding: '4px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #ccc', outline: 'none' }} />
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <span style={{ fontSize: '0.75rem', color: '#666', fontWeight: 600 }}>Max:</span>
-                  <input type="number" min="1" value={teamMax} onChange={e => setTeamMax(e.target.value)} style={{ width: '50px', padding: '4px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #ccc', outline: 'none' }} />
-                </div>
+                <span style={{ fontSize: '0.75rem', color: '#666', fontWeight: 600 }}>Members per Team:</span>
+                <input type="number" min="1" max="20" value={teamMax} onChange={e => { setTeamMax(e.target.value); setTeamMin(e.target.value); }} style={{ width: '60px', padding: '4px 8px', fontSize: '0.85rem', fontWeight: 700, borderRadius: '4px', border: '1px solid #ccc', outline: 'none', textAlign: 'center' }} />
               </div>
             )}
           </div>
@@ -1537,8 +1528,9 @@ function RegistrationTab({ event, saveEvent }: { event: any, saveEvent: any }) {
             formSections
           };
           if (partType === 'Team') {
-            updatePayload.teamMin = parseInt(teamMin) || 1;
-            updatePayload.teamMax = parseInt(teamMax) || 4;
+            const count = parseInt(teamMax) || 4;
+            updatePayload.teamMin = count;
+            updatePayload.teamMax = count;
           }
           await saveEvent(updatePayload);
           alert('Registration details saved successfully!');

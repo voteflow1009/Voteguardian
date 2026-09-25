@@ -58,6 +58,8 @@ export default function AdminCreateEvent({ eventId }: { eventId?: string }) {
   const [maxTickets, setMaxTickets] = useState('');
 
   const [capacity, setCapacity] = useState('');
+  const [participantType, setParticipantType] = useState<'individual' | 'team'>('individual');
+  const [teamMax, setTeamMax] = useState('4');
   const [targetDepartment, setTargetDepartment] = useState('All');
   const [generateQRCode, setGenerateQRCode] = useState(false);
   const [visibility, setVisibility] = useState<'Public' | 'Private' | 'Unlisted'>('Public');
@@ -117,6 +119,8 @@ export default function AdminCreateEvent({ eventId }: { eventId?: string }) {
             setMaxTickets(data.pricing?.maxTicketsPerUser?.toString() || '');
           }
           setCapacity(data.capacity?.toString() || data.seats?.toString() || '');
+          if (data.participantType) setParticipantType(data.participantType as any);
+          if (data.teamMax || data.teamMin) setTeamMax((data.teamMax || data.teamMin || 4).toString());
           setTargetDepartment(data.targetDepartment || 'All');
           setGenerateQRCode(data.generateQRCode || false);
           if (data.visibility) setVisibility(data.visibility);
@@ -178,6 +182,15 @@ export default function AdminCreateEvent({ eventId }: { eventId?: string }) {
       formData.append('venue', finalLocation);
       formData.append('seats', capacity || 'Limited');
       formData.append('targetDepartment', targetDepartment);
+      formData.append('participantType', participantType);
+      if (participantType === 'team') {
+        const count = teamMax || '4';
+        formData.append('teamMin', count);
+        formData.append('teamMax', count);
+      } else {
+        formData.append('teamMin', '1');
+        formData.append('teamMax', '1');
+      }
       formData.append('generateQRCode', String(generateQRCode));
       formData.append('visibility', visibility);
       formData.append('allowMultipleRegistrations', String(allowMultipleRegistrations));
@@ -413,6 +426,39 @@ export default function AdminCreateEvent({ eventId }: { eventId?: string }) {
               <Users size={20} color="#888" />
               <div style={{ flex: 1, fontSize: '0.95rem', fontWeight: 700, color: '#555' }}>Capacity</div>
               <input placeholder="Unlimited" value={capacity} onChange={e => setCapacity(e.target.value)} style={{ background: 'transparent', border: 'none', textAlign: 'right', fontWeight: 700, color: '#555', width: '100px', outline: 'none' }} />
+            </div>
+
+            {/* Participant Type (Individual vs Team) */}
+            <div style={{ background: '#eaeaea', borderRadius: '12px', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <Users size={20} color={participantType === 'team' ? '#8B5CF6' : '#888'} />
+                  <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#555' }}>Participant Type</div>
+                </div>
+                <select
+                  value={participantType}
+                  onChange={e => setParticipantType(e.target.value as 'individual' | 'team')}
+                  style={{ background: '#fff', border: 'none', padding: '6px 12px', borderRadius: '8px', fontWeight: 700, color: '#111', outline: 'none', cursor: 'pointer' }}
+                >
+                  <option value="individual">Individual</option>
+                  <option value="team">Team Event</option>
+                </select>
+              </div>
+
+              {participantType === 'team' && (
+                <div style={{ borderTop: '1px solid #ccc', paddingTop: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#444' }}>Team Members per Team</div>
+                  <input
+                    type="number"
+                    min="1"
+                    max="20"
+                    value={teamMax}
+                    onChange={e => setTeamMax(e.target.value)}
+                    placeholder="4"
+                    style={{ width: '80px', background: '#fff', border: 'none', padding: '6px 12px', borderRadius: '8px', textAlign: 'center', fontWeight: 700, outline: 'none' }}
+                  />
+                </div>
+              )}
             </div>
 
             <div style={{ background: '#eaeaea', borderRadius: '12px', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1rem' }}>

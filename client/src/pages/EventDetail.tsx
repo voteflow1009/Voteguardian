@@ -9,10 +9,12 @@ import { RegisterView } from '../components/SharedViews';
 import darkLogo from '../logo/dark logo.png';
 import { getEventDetailHash } from '../utils/slug';
 
+const eventCache = new Map<string, { raw: any; current: any }>();
+
 const EventDetail = ({ hash }: { hash?: string }) => {
   const { user, isLoggedIn } = useAuth();
   const isAdminOrOrganizer = isLoggedIn && ((user?.role as any) === 'admin' || (user?.role as any) === 'organizer' || (user?.role as any) === 'club_admin');
-  const eventId = hash?.replace('#event-detail-', '') || '1';
+  const eventId = hash?.replace('#event-detail-', '').replace('#event_detail_', '').replace('#event_detail-', '') || '1';
 
   const [currentEvent, setCurrentEvent] = useState<any>(null);
   const [rawEvent, setRawEvent] = useState<any>(null);
@@ -22,11 +24,23 @@ const EventDetail = ({ hash }: { hash?: string }) => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   useEffect(() => {
+    setShowRegister(false);
     window.scrollTo(0, 0);
+    let isMounted = true;
+
+    // Instantly check memory cache for 0ms load time
+    const cached = eventCache.get(eventId);
+    if (cached) {
+      setRawEvent(cached.raw);
+      setCurrentEvent(cached.current);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+
     const fetchEvent = async () => {
       try {
         if (['c1', 'c2', 'c3', 'c4', 'c5'].includes(eventId) || (eventId.length < 10 && !eventId.includes('-'))) {
-          // Dummy fallback for hero images or old hardcoded links
           const dummyEvent = {
             id: eventId,
             title: 'Discover events worth showing up for.',
@@ -40,14 +54,18 @@ const EventDetail = ({ hash }: { hash?: string }) => {
             seats: 'Limited',
             isRegistered: false
           };
-          setCurrentEvent(dummyEvent);
-          setRawEvent(dummyEvent);
-          setLoading(false);
+          if (isMounted) {
+            setCurrentEvent(dummyEvent);
+            setRawEvent(dummyEvent);
+            setLoading(false);
+          }
           return;
         }
 
         const res = await api.get(`/events/${eventId}`);
         const data = res.data;
+        if (!isMounted) return;
+
         setRawEvent(data);
 
         // Polish browser hash URL with clean slug
@@ -57,7 +75,8 @@ const EventDetail = ({ hash }: { hash?: string }) => {
             window.history.replaceState(null, '', cleanHash);
           }
         }
-        setCurrentEvent({
+
+        const parsedCurrent = {
           id: data._id,
           title: data.title,
           img: data.image || data.imageUrl || '/event1.png',
@@ -74,16 +93,63 @@ const EventDetail = ({ hash }: { hash?: string }) => {
           endDate: data.endDate,
           mode: data.mode,
           location: data.location
-        });
+        };
+
+        setCurrentEvent(parsedCurrent);
+
+        // Store in memory cache for instant future loads
+        eventCache.set(data._id, { raw: data, current: parsedCurrent });
+        eventCache.set(eventId, { raw: data, current: parsedCurrent });
+        const cleanHashKey = getEventDetailHash(data).replace('#event-detail-', '');
+        if (cleanHashKey) {
+          eventCache.set(cleanHashKey, { raw: data, current: parsedCurrent });
+        }
+
+        // Pre-cache populated sub-events for 0ms sub-event navigation
+        if (data.subEvents && Array.isArray(data.subEvents)) {
+          data.subEvents.forEach((sub: any) => {
+            if (sub && (sub._id || sub.id)) {
+              const subId = sub._id || sub.id;
+              const subCurrent = {
+                id: subId,
+                title: sub.title,
+                img: sub.image || sub.imageUrl || '/event1.png',
+                date: sub.startDate || sub.date || 'TBA',
+                venue: sub.venue || sub.location || 'TBA',
+                category: sub.category || 'Event',
+                description: sub.description || 'No description available',
+                organizer: sub.organizer?.name || sub.organizer || data.organizer?.name || data.organizer || 'Host',
+                price: sub.pricing?.isPaid ? `₹${sub.pricing.ticketPrice}` : (sub.price || 'Free'),
+                seats: sub.pricing?.ticketCapacity || sub.capacity || sub.seats || 'Limited',
+                isRegistered: sub.isRegistered || false,
+                allowMultipleRegistrations: sub.allowMultipleRegistrations,
+                startDate: sub.startDate,
+                endDate: sub.endDate,
+                mode: sub.mode,
+                location: sub.location
+              };
+              eventCache.set(subId, { raw: sub, current: subCurrent });
+              const subHashKey = getEventDetailHash(sub).replace('#event-detail-', '');
+              if (subHashKey) {
+                eventCache.set(subHashKey, { raw: sub, current: subCurrent });
+              }
+            }
+          });
+        }
       } catch (err) {
         console.error('Error fetching event details', err);
-        setCurrentEvent(null);
-          const error = err as any; alert('Event Error: ' + (error.response?.data?.message || error.message));
+        if (!cached && isMounted) {
+          setCurrentEvent(null);
+          const error = err as any; 
+          alert('Event Error: ' + (error.response?.data?.message || error.message));
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
     fetchEvent();
+
+    return () => { isMounted = false; };
   }, [eventId]);
 
   const isRegistrationClosed = () => {
@@ -282,7 +348,7 @@ const EventDetail = ({ hash }: { hash?: string }) => {
                           <Users size={18} />
                         </div>
                         <div style={{ fontSize: '1rem', color: '#334155', fontWeight: 500, lineHeight: 1.5, alignSelf: 'center' }}>
-                          Min {rawEvent.teamMin || 1} • Max {rawEvent.teamMax || 1} members per team
+                          {rawEvent.teamMax || rawEvent.teamMin || 4} Members per team
                         </div>
                       </li>
                     )}
@@ -476,8 +542,8 @@ const EventDetail = ({ hash }: { hash?: string }) => {
                       <div>
                         <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1e293b' }}>Team Size</div>
                         <div style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 500 }}>
-                          {rawEvent?.teamMin && rawEvent?.teamMax
-                            ? `${rawEvent.teamMin} - ${rawEvent.teamMax} Members / Team`
+                          {rawEvent?.teamMax || rawEvent?.teamMin
+                            ? `${rawEvent.teamMax || rawEvent.teamMin} Members / Team`
                             : 'Team'}
                         </div>
                       </div>

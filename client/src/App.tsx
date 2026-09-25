@@ -212,7 +212,7 @@ function AppContent() {
     if (currentRoute === '#home')            return <Home2 />;
     if (currentRoute === '#clubs')            return <Clubs />;
     if (currentRoute.startsWith('#club-detail')) return <ClubDetail hash={currentRoute} />;
-    if (currentRoute.startsWith('#event-detail')) return <EventDetail hash={currentRoute} />;
+    if (currentRoute.startsWith('#event-detail') || currentRoute.startsWith('#event_detail')) return <EventDetail hash={currentRoute} />;
     if (currentRoute === '#signin')           return <Auth />;
     if (currentRoute === '#registered-events') return <RegisteredEvents />;
     if (currentRoute === '#gallery')          return <Gallery />;
