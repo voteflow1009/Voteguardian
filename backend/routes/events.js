@@ -594,7 +594,7 @@ router.get('/registered', requireAuth, async (req, res) => {
     const clubsEvents = await ClubsEvent.find({ registeredUsers: req.user._id }).lean();
 
     const registrations = await Registration.find({ user: req.user._id }).lean();
-    const paidRegistrations = await PaidRegistration.find({ user: req.user._id }).lean();
+    const paidRegistrations = await PaidRegistration.find({ user: req.user._id, status: 'completed' }).lean();
 
     const getRollNo = (eventId) => {
       const reg = registrations.find(r => r.event.toString() === eventId.toString()) ||
@@ -993,7 +993,7 @@ router.get('/:id/participants', requireAuth, async (req, res) => {
     if (!event) return res.status(404).json({ message: 'Event not found' });
 
     // Also fetch paid registrations
-    const paidRegistrations = await PaidRegistration.find({ event: event._id }).populate('user', 'name email phone avatar').lean();
+    const paidRegistrations = await PaidRegistration.find({ event: event._id, status: 'completed' }).populate('user', 'name email phone avatar').lean();
 
     // Fetch free registrations to get custom answers
     const freeRegistrations = await Registration.find({ event: event._id }).populate('user', 'name email phone avatar').lean();

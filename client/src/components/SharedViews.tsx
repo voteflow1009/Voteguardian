@@ -595,6 +595,12 @@ export const RegisterView = ({ event, onBack }: { event: any, onBack: () => void
     return field?.required === 'Off';
   };
 
+  const isShiftOrDateQuestion = (qTitle: string) => {
+    if (!qTitle) return false;
+    const lower = qTitle.toLowerCase();
+    return lower.includes('shift') || lower.includes('date') || lower.includes('slot') || lower.includes('timing') || lower.includes('time slot');
+  };
+
   const validateCurrentStep = (): { valid: boolean; message?: string } => {
     const m = teamMembers[currentStep];
 
@@ -621,6 +627,9 @@ export const RegisterView = ({ event, onBack }: { event: any, onBack: () => void
     // Check Custom Questions
     if (event.customQuestions?.length > 0) {
       for (let q of event.customQuestions) {
+        if (isTeam && currentStep > 0 && isShiftOrDateQuestion(q.question)) {
+          continue;
+        }
         if (q.required === 'Required' || q.required === true) {
           const answered = m.customAnswers?.find(a => a.question === q.question);
           if (!answered || !answered.answer) return { valid: false, message: `Question "${q.question}" is required` };
@@ -636,6 +645,9 @@ export const RegisterView = ({ event, onBack }: { event: any, onBack: () => void
       { id: 4, name: 'Year', required: 'Off' }
     ];
     for (let eInfo of activeEduInfoVal) {
+      if (isTeam && currentStep > 0 && isShiftOrDateQuestion(eInfo.name)) {
+        continue;
+      }
       if (eInfo.required === 'Required') {
         const answered = m.customAnswers?.find(a => a.question === eInfo.name);
         if (!answered || !answered.answer) return { valid: false, message: `Field "${eInfo.name}" is required` };
@@ -651,6 +663,7 @@ export const RegisterView = ({ event, onBack }: { event: any, onBack: () => void
 
     for (let q of (currentSectionData.questions || [])) {
       if (q.type === 'Header Text / Note' || q.type?.includes('Header Text')) continue;
+      if (isTeam && currentStep > 0 && isShiftOrDateQuestion(q.question)) continue;
       if (q.required === 'Required' || q.required === true) {
         const answered = m.customAnswers?.find(a => a.question === q.question);
         if (!answered || !answered.answer) return { valid: false, message: `Question "${q.question}" on ${currentSectionData.title || `Page ${activeSection + 1}`} is required` };
@@ -708,13 +721,30 @@ export const RegisterView = ({ event, onBack }: { event: any, onBack: () => void
       const numericPrice = ticketPriceStr === 'Free' || ticketPriceStr === '0' ? 0 : Number(ticketPriceStr || event.pricing?.ticketPrice || 0);
       const isPaidTicket = numericPrice > 0;
 
-      // Clean payload to not send fields that are explicitly turned Off
-      const cleanedTeamMembers = teamMembers.map(m => ({
-        ...m,
-        name: isFieldOff('Name') ? '' : m.name,
-        email: isFieldOff('Email') ? '' : m.email,
-        phone: isFieldOff('Mobile Number') ? '' : m.phone,
-      }));
+      // Extract leader shift/date custom answers
+      const leaderShiftDateAnswers = (teamMembers[0]?.customAnswers || []).filter((a: any) => isShiftOrDateQuestion(a.question));
+
+      // Clean payload to not send fields that are explicitly turned Off and ensure shift/date answers are copied from leader
+      const cleanedTeamMembers = teamMembers.map((m, idx) => {
+        let memberAnswers = m.customAnswers ? [...m.customAnswers] : [];
+        if (idx > 0 && leaderShiftDateAnswers.length > 0) {
+          leaderShiftDateAnswers.forEach((lAns: any) => {
+            const existingIdx = memberAnswers.findIndex((a: any) => a.question === lAns.question);
+            if (existingIdx >= 0) {
+              memberAnswers[existingIdx] = { ...lAns };
+            } else {
+              memberAnswers.push({ ...lAns });
+            }
+          });
+        }
+        return {
+          ...m,
+          name: isFieldOff('Name') ? '' : m.name,
+          email: isFieldOff('Email') ? '' : m.email,
+          phone: isFieldOff('Mobile Number') ? '' : m.phone,
+          customAnswers: memberAnswers
+        };
+      });
 
       if (event.pricing?.isPaid || isPaidTicket) {
         const { data: orderData } = await api.post('/payments/create-order', {
@@ -910,7 +940,11 @@ export const RegisterView = ({ event, onBack }: { event: any, onBack: () => void
                             )}
 
                             {/* Educational Info */}
-                            {activeEduInfo?.filter((eInfo: any) => eInfo.required !== 'Off').map((eInfo: any, i: number) => {
+                            {activeEduInfo?.filter((eInfo: any) => {
+                              if (eInfo.required === 'Off') return false;
+                              if (isTeam && currentStep > 0 && isShiftOrDateQuestion(eInfo.name)) return false;
+                              return true;
+                            }).map((eInfo: any, i: number) => {
                               const val = currentMember.customAnswers?.find(a => a.question === eInfo.name)?.answer || '';
                               const isReq = eInfo.required === 'Required';
                               return (
@@ -936,6 +970,9 @@ export const RegisterView = ({ event, onBack }: { event: any, onBack: () => void
 
                         {/* Section-specific custom questions */}
                         {(currentSectionData.questions || []).map((q: any, i: number) => {
+                          if (isTeam && currentStep > 0 && isShiftOrDateQuestion(q.question)) {
+                            return null;
+                          }
                           const val = currentMember.customAnswers?.find(a => a.question === q.question)?.answer || '';
                           const isReq = q.required === 'Required' || q.required === true;
 
@@ -1098,7 +1135,11 @@ export const RegisterView = ({ event, onBack }: { event: any, onBack: () => void
                         )}
 
                         {/* Educational Info */}
-                        {activeEduInfo?.filter((eInfo: any) => eInfo.required !== 'Off').map((eInfo: any, i: number) => {
+                        {activeEduInfo?.filter((eInfo: any) => {
+                          if (eInfo.required === 'Off') return false;
+                          if (isTeam && currentStep > 0 && isShiftOrDateQuestion(eInfo.name)) return false;
+                          return true;
+                        }).map((eInfo: any, i: number) => {
                           const val = currentMember.customAnswers?.find(a => a.question === eInfo.name)?.answer || '';
                           const isReq = eInfo.required === 'Required';
                           return (
@@ -1122,6 +1163,9 @@ export const RegisterView = ({ event, onBack }: { event: any, onBack: () => void
 
                         {/* Custom Questions */}
                         {event.customQuestions?.map((q: any, i: number) => {
+                          if (isTeam && currentStep > 0 && isShiftOrDateQuestion(q.question)) {
+                            return null;
+                          }
                           const val = currentMember.customAnswers?.find(a => a.question === q.question)?.answer || '';
                           const isReq = q.required === 'Required' || q.required === true;
 
