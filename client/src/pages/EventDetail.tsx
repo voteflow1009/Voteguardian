@@ -487,41 +487,45 @@ const EventDetail = ({ hash }: { hash?: string }) => {
                       <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#111', lineHeight: 1.2, marginTop: '1px' }}>{getValidDate(currentEvent.startDate || currentEvent.date) ? getValidDate(currentEvent.startDate || currentEvent.date)!.getDate() : '📅'}</div>
                     </div>
                     <div>
-                      {currentEvent.startDate ? (
-                        <>
-                          <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1e293b' }}>{getValidDate(currentEvent.startDate) ? getValidDate(currentEvent.startDate)!.toLocaleString('en-US', { weekday: 'long', day: 'numeric', month: 'long' }) : (cleanDateStr(currentEvent.startDate) || 'Date TBA')}</div>
-                          <div style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 500 }}>
-                            {(() => {
-                              const validStart = getValidDate(currentEvent.startDate);
-                              if (!validStart) return 'Time TBD';
-                              
-                              const strStart = (currentEvent.startDate || '').toString();
-                              if (strStart.endsWith('T') || (!strStart.includes(':') && strStart.match(/^\d{4}-\d{2}-\d{2}$/))) {
-                                return 'Time TBD';
-                              }
+                      <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1e293b' }}>
+                        {(() => {
+                          const tLower = (currentEvent?.title || '').toLowerCase();
+                          if (tLower.includes('physiofest') || tLower.includes('squad fitness') || tLower.includes('duet fitness') || tLower.includes('solo fitness')) {
+                            return '30 Sept & 1 Oct 2026';
+                          }
+                          if (currentEvent.startDate) {
+                            return getValidDate(currentEvent.startDate) 
+                              ? getValidDate(currentEvent.startDate)!.toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) 
+                              : (cleanDateStr(currentEvent.startDate) || 'Date TBA');
+                          }
+                          return currentEvent.date?.split('•')[0] || currentEvent.date?.split(' - ')[0] || currentEvent.date;
+                        })()}
+                      </div>
+                      <div style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 500 }}>
+                        {(() => {
+                          const validStart = getValidDate(currentEvent.startDate);
+                          if (!validStart) return 'Time TBD';
+                          
+                          const strStart = (currentEvent.startDate || '').toString();
+                          if (strStart.endsWith('T') || (!strStart.includes(':') && strStart.match(/^\d{4}-\d{2}-\d{2}$/))) {
+                            return 'Time TBD';
+                          }
 
-                              const startTime = validStart.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit' });
-                              
-                              const validEnd = getValidDate(currentEvent.endDate);
-                              if (!validEnd) return startTime;
-                              
-                              const strEnd = (currentEvent.endDate || '').toString();
-                              if (strEnd.endsWith('T') || (!strEnd.includes(':') && strEnd.match(/^\d{4}-\d{2}-\d{2}$/))) {
-                                return startTime;
-                              }
-                              
-                              const endStr = validEnd.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit' });
-                              if (endStr === '11:59 PM' || validEnd.getHours() === 23 || startTime === endStr) return startTime;
-                              return `${startTime} - ${endStr}`;
-                            })()}
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1e293b' }}>{currentEvent.date?.split('•')[0] || currentEvent.date?.split(' - ')[0] || currentEvent.date}</div>
-                          <div style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 500 }}>{currentEvent.date?.split('•')[1] || currentEvent.date?.split(' - ')[1] || ''}</div>
-                        </>
-                      )}
+                          const startTime = validStart.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit' });
+                          
+                          const validEnd = getValidDate(currentEvent.endDate);
+                          if (!validEnd) return startTime;
+                          
+                          const strEnd = (currentEvent.endDate || '').toString();
+                          if (strEnd.endsWith('T') || (!strEnd.includes(':') && strEnd.match(/^\d{4}-\d{2}-\d{2}$/))) {
+                            return startTime;
+                          }
+                          
+                          const endStr = validEnd.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit' });
+                          if (endStr === '11:59 PM' || validEnd.getHours() === 23 || startTime === endStr) return startTime;
+                          return `${startTime} - ${endStr}`;
+                        })()}
+                      </div>
                     </div>
                   </div>
 
@@ -687,7 +691,11 @@ const EventDetail = ({ hash }: { hash?: string }) => {
               {/* Sub-Events / Challenges / Events Section */}
               {rawEvent?.isMainEvent && (() => {
                 const renderSubCard = (sub: any) => {
-                  const subDate = sub.isDateTBD || sub.date === 'TBD' || sub.startDate === 'TBD' ? 'To Be Announced' : (sub.date || sub.startDate || 'TBD');
+                  let subDate = sub.isDateTBD || sub.date === 'TBD' || sub.startDate === 'TBD' ? 'To Be Announced' : (sub.date || sub.startDate || 'TBD');
+                  const tLower = (sub.title || '').toLowerCase();
+                  if (isPhysiofest && (tLower.includes('squad fitness') || tLower.includes('duet fitness') || tLower.includes('solo fitness') || tLower.includes('fitness challenge'))) {
+                    subDate = '30 Sept & 1 Oct 2026';
+                  }
                   const targetHash = sub.customHash || getEventDetailHash(sub);
                   return (
                     <div 
