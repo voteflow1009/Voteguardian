@@ -136,6 +136,18 @@ const EventDetail = ({ hash }: { hash?: string }) => {
             }
           });
         }
+
+        if (data && (data._id === '6ab6b194184956bd944ba2c1' || (data.title && data.title.toLowerCase().includes('physiofest')))) {
+          const physiofestSessionIds = ['6ab7bc4f628c103b6cb88613', '6ab7bd9d628c103b6cb887be', '6ab7be90628c103b6cb88859'];
+          Promise.all(physiofestSessionIds.map(id => api.get(`/events/${id}`).then(r => r.data).catch(() => null)))
+            .then(fetchedSessions => {
+              if (!isMounted) return;
+              const valid = fetchedSessions.filter(Boolean);
+              if (valid.length > 0) {
+                setRawEvent((prev: any) => ({ ...prev, fetchedPhysiofestSessions: valid }));
+              }
+            }).catch(console.error);
+        }
       } catch (err) {
         console.error('Error fetching event details', err);
         if (!cached && isMounted) {
@@ -190,6 +202,7 @@ const EventDetail = ({ hash }: { hash?: string }) => {
 
   const isMoodiEvent = currentEvent?.id === '6a997f663954e75ccc4dc599' || (currentEvent?.title && currentEvent.title.toLowerCase().includes('jecrc x iit mumbai'));
   const isHardcodedFormEvent = currentEvent?.id === '6a9bbfa73954e75ccc4dd084';
+  const isPhysiofest = currentEvent?.id === '6ab6b194184956bd944ba2c1' || (currentEvent?.title && currentEvent.title.toLowerCase().includes('physiofest'));
   const isNotStarted = (isMoodiEvent || isHardcodedFormEvent) ? false : rawEvent?.registrationStatus === 'Not Yet Started';
   const isClosed = (isMoodiEvent || isHardcodedFormEvent) ? false : (rawEvent?.registrationStatus === 'Closed' || (!isNotStarted && isRegistrationClosed()));
 
@@ -671,37 +684,139 @@ const EventDetail = ({ hash }: { hash?: string }) => {
                 );
               })()}
 
-                            {/* Sub-Events / Challenges Section */}
-              {rawEvent?.isMainEvent && rawEvent.subEvents && rawEvent.subEvents.length > 0 && (
-                <div className="order-3" style={{ marginBottom: '2.5rem' }}>
-                  <h2 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '1rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div style={{ width: '4px', height: '24px', background: '#3b82f6', borderRadius: '4px' }}></div>
-                    Challenges / Events
-                  </h2>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
-                    {rawEvent.subEvents.map((sub: any) => {
-                       const subDate = sub.isDateTBD || sub.date === 'TBD' || sub.startDate === 'TBD' ? 'To Be Announced' : (sub.date || sub.startDate || 'TBD');
-                       return (
-                      <div 
-                        key={sub._id}
-                        onClick={() => { window.location.hash = getEventDetailHash(sub); window.scrollTo(0,0); }}
-                        style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', transition: 'all 0.2s' }}
-                        onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
-                        onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
-                      >
-                        <img src={sub.image || sub.imageUrl || 'https://images.unsplash.com/photo-1540575467063-11200731fa29?w=800&q=80'} alt={sub.title} style={{ width: '60px', height: '60px', borderRadius: '8px', objectFit: 'cover' }} />
-                        <div style={{ flex: 1, overflow: 'hidden' }}>
-                          <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub.title}</h3>
-                          <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px' }}>{subDate}</div>
-                        </div>
-                        <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
-                        </div>
+              {/* Sub-Events / Challenges / Events Section */}
+              {rawEvent?.isMainEvent && (() => {
+                const renderSubCard = (sub: any) => {
+                  const subDate = sub.isDateTBD || sub.date === 'TBD' || sub.startDate === 'TBD' ? 'To Be Announced' : (sub.date || sub.startDate || 'TBD');
+                  const targetHash = sub.customHash || getEventDetailHash(sub);
+                  return (
+                    <div 
+                      key={sub._id || sub.id}
+                      onClick={() => { window.location.hash = targetHash; window.scrollTo(0,0); }}
+                      style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', transition: 'all 0.2s' }}
+                      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
+                      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+                    >
+                      <img src={sub.image || sub.imageUrl || 'https://images.unsplash.com/photo-1540575467063-11200731fa29?w=800&q=80'} alt={sub.title} style={{ width: '60px', height: '60px', borderRadius: '8px', objectFit: 'cover' }} />
+                      <div style={{ flex: 1, overflow: 'hidden' }}>
+                        <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub.title}</h3>
+                        <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px' }}>{subDate}</div>
                       </div>
-                    )})}
-                  </div>
-                </div>
-              )}
+                      <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+                      </div>
+                    </div>
+                  );
+                };
+
+                const isPhysiofestEventSession = (title: string = '') => {
+                  const t = title.toLowerCase();
+                  return (
+                    t.includes('zumba') ||
+                    t.includes('fitness drill') ||
+                    t.includes('drill by ju ncc') ||
+                    t.includes('self defen') ||
+                    t.includes('self-defen') ||
+                    t.includes('session by nss') ||
+                    t.includes('session by ju ncc')
+                  );
+                };
+
+                if (isPhysiofest) {
+                  const rawSubs = rawEvent.subEvents || [];
+                  const matchedFromSubEvents = rawSubs.filter((sub: any) => isPhysiofestEventSession(sub?.title || ''));
+                  const challengesList = rawSubs.filter((sub: any) => !isPhysiofestEventSession(sub?.title || ''));
+
+                  const hardcodedSessions = [
+                    {
+                      _id: '6ab7bc4f628c103b6cb88613',
+                      title: 'Zumba Session By NSS',
+                      date: '2026-09-30 • 16:00 - 16:30',
+                      startDate: '2026-09-30',
+                      image: 'https://pub-623ee5f624134dedb9f1765f0f4a8af8.r2.dev/events/1790426190566-a06ac40118fd.webp',
+                      imageUrl: 'https://pub-623ee5f624134dedb9f1765f0f4a8af8.r2.dev/events/1790426190566-a06ac40118fd.webp'
+                    },
+                    {
+                      _id: '6ab7bd9d628c103b6cb887be',
+                      title: 'Fitness Drill By NCC',
+                      date: '2026-09-30 & 2026-10-01',
+                      startDate: '2026-09-30',
+                      image: 'https://pub-623ee5f624134dedb9f1765f0f4a8af8.r2.dev/events/1790426524269-1a07956e4801.webp',
+                      imageUrl: 'https://pub-623ee5f624134dedb9f1765f0f4a8af8.r2.dev/events/1790426524269-1a07956e4801.webp'
+                    },
+                    {
+                      _id: '6ab7be90628c103b6cb88859',
+                      title: 'Self-Defence Session By NSS',
+                      date: '2026-10-01 • 16:00 - 17:00',
+                      startDate: '2026-10-01',
+                      image: 'https://pub-623ee5f624134dedb9f1765f0f4a8af8.r2.dev/events/1790426768370-878caf81f51b.webp',
+                      imageUrl: 'https://pub-623ee5f624134dedb9f1765f0f4a8af8.r2.dev/events/1790426768370-878caf81f51b.webp'
+                    }
+                  ];
+
+                  const availablePool = [...matchedFromSubEvents, ...(rawEvent.fetchedPhysiofestSessions || [])];
+
+                  const eventsList = hardcodedSessions.map(hc => {
+                    const realMatch = availablePool.find((sub: any) => {
+                      if (!sub) return false;
+                      if (String(sub._id) === String(hc._id) || String(sub.id) === String(hc._id)) return true;
+                      const t = (sub.title || '').toLowerCase();
+                      const hcT = hc.title.toLowerCase();
+                      if (hcT.includes('zumba') && t.includes('zumba')) return true;
+                      if (hcT.includes('fitness drill') && (t.includes('fitness drill') || t.includes('drill'))) return true;
+                      if (hcT.includes('self-defence') && (t.includes('self defen') || t.includes('self-defen'))) return true;
+                      return false;
+                    });
+                    return realMatch || hc;
+                  });
+
+                  return (
+                    <>
+                      {/* Challenges Section */}
+                      {challengesList.length > 0 && (
+                        <div className="order-3" style={{ marginBottom: '2.5rem' }}>
+                          <h2 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '1rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ width: '4px', height: '24px', background: '#3b82f6', borderRadius: '4px' }}></div>
+                            Challenges
+                          </h2>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
+                            {challengesList.map(renderSubCard)}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Events Section */}
+                      {eventsList.length > 0 && (
+                        <div className="order-3" style={{ marginBottom: '2.5rem' }}>
+                          <h2 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '1rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ width: '4px', height: '24px', background: '#8b5cf6', borderRadius: '4px' }}></div>
+                            Events
+                          </h2>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
+                            {eventsList.map(renderSubCard)}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  );
+                }
+
+                if (rawEvent.subEvents && rawEvent.subEvents.length > 0) {
+                  return (
+                    <div className="order-3" style={{ marginBottom: '2.5rem' }}>
+                      <h2 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '1rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ width: '4px', height: '24px', background: '#3b82f6', borderRadius: '4px' }}></div>
+                        Challenges / Events
+                      </h2>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
+                        {rawEvent.subEvents.map(renderSubCard)}
+                      </div>
+                    </div>
+                  );
+                }
+
+                return null;
+              })()}
 
 {/* About Section */}
               <div className="order-4" style={{ marginBottom: '2.5rem' }}>
