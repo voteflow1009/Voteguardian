@@ -932,8 +932,12 @@ router.get('/:id', softAuth, async (req, res) => {
     if (!event) {
       const cleanSlug = rawParam.toLowerCase().trim();
       const escapeRegex = (s) => s.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
-      const titlePattern = cleanSlug.split('-').map(escapeRegex).join('[\\s_-]+');
-      const titleRegex = new RegExp(`^${titlePattern}$`, 'i');
+      // Use [^a-zA-Z0-9]+ between words and [^a-zA-Z0-9]* between characters within words
+      // to match any special characters that the frontend slug generator removed
+      const titlePattern = cleanSlug.split(/[\s_-]+/).filter(Boolean).map(word => {
+        return word.split('').map(escapeRegex).join('[^a-zA-Z0-9]*');
+      }).join('[^a-zA-Z0-9]+');
+      const titleRegex = new RegExp(`^.*?${titlePattern}.*?$`, 'i');
 
       const [s1, s2, s3] = await Promise.all([
         Event.findOne({ title: titleRegex }).populate('createdBy', 'avatar logo').populate('subEvents').lean(),
@@ -945,12 +949,13 @@ router.get('/:id', softAuth, async (req, res) => {
 
     if (!event) return res.status(404).json({ message: 'Event not found. actualId: ' + actualId + ' Model: ' + eventModel });
 
+    const isOwner = req.user ? ((event.createdBy && event.createdBy.toString() === req.user._id.toString()) ||
+      (event.organizer && req.user.name && event.organizer.toString().toLowerCase() === req.user.name.toLowerCase())) : false;
+
     if (event.visibility === 'Private') {
       if (!req.user) {
         return res.status(403).json({ message: 'This event is private.' });
       }
-      const isOwner = (event.createdBy && event.createdBy.toString() === req.user._id.toString()) ||
-        (event.organizer && req.user.name && event.organizer.toString().toLowerCase() === req.user.name.toLowerCase());
 
       if (!isOwner && req.user.role !== 'admin') {
         return res.status(403).json({ message: 'This event is private.' });
@@ -1057,6 +1062,13 @@ const getTicketCategoryCount = async (eventId, categoryKeyword, selectedDate = n
     event.isRegistered = event.allowMultipleRegistrations ? false : (req.user ? event.registeredUsers?.some(id => id.toString() === req.user._id.toString()) : false);
 
     const eventObj = event.toObject ? event.toObject() : { ...event };
+    
+    // Do not expose sensitive user lists to non-owners
+    if (!isOwner && (!req.user || req.user.role !== 'admin')) {
+      delete eventObj.registeredUsers;
+      delete eventObj.attendedUsers;
+    }
+
     eventObj.isRegistered = event.isRegistered;
     eventObj.totalRegistrationsCount = totalCount;
     eventObj.isFull = !!isFull;

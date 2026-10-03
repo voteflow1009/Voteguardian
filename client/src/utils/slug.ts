@@ -1,4 +1,4 @@
-﻿export function createSlug(title?: string): string {
+export function createSlug(title?: string): string {
   if (!title) return 'event';
   return title
     .toLowerCase()
@@ -15,12 +15,16 @@ export function getEventDetailHash(event: { _id?: string; id?: string; title?: s
   }
   const id = event._id || event.id || '';
   const slug = createSlug(event.title || '');
-  if (slug && id) {
+  
+  // Keep original format for Dandiya Raas event to avoid breaking live links
+  if (id === '6abf5c3927319d794ee7bac4') {
     return `#event-detail-${slug}--${id}`;
+  }
+
+  if (slug) {
+    return `#event-detail-${slug}`;
   } else if (id) {
     return `#event-detail-${id}`;
-  } else if (slug) {
-    return `#event-detail-${slug}`;
   }
   return `#home`;
 }

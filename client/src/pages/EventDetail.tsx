@@ -573,8 +573,7 @@ const EventDetail = ({ hash }: { hash?: string }) => {
               {(() => {
                 if (rawEvent?.isMainEvent) return null; // Hide registration card for main events
                 const isCapacityFull = !!(rawEvent?.isFull || (rawEvent?.capacity && Number(rawEvent.capacity) > 0 && (
-                  (rawEvent.totalRegistrationsCount !== undefined ? Number(rawEvent.totalRegistrationsCount) >= Number(rawEvent.capacity) : false) ||
-                  (rawEvent.registeredUsers && Array.isArray(rawEvent.registeredUsers) && rawEvent.registeredUsers.length >= Number(rawEvent.capacity))
+                  (rawEvent.totalRegistrationsCount !== undefined ? Number(rawEvent.totalRegistrationsCount) >= Number(rawEvent.capacity) : false)
                 )));
                 const isUserRegistered = currentEvent.isRegistered && !rawEvent?.allowMultipleRegistrations && !currentEvent?.allowMultipleRegistrations;
 
